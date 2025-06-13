@@ -30,7 +30,7 @@ jobs:
 
       - name: DVC Pull from DagsHub
         run: |
-          dvc pull --force
+          dvc pull 
 
       - name: Run DVC Pipeline
         run: |
