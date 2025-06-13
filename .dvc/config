@@ -1,4 +1,6 @@
 [core]
-    remote = myremote
+    remote = origin
 ['remote "myremote"']
     url = C:\Users\uttam\AppData\Local\Temp
+['remote "origin"']
+    url = https://dagshub.com/mepaluttam/yt-comment-sentiment-analysis.dvc
