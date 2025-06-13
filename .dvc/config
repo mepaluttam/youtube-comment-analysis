@@ -1,6 +1,5 @@
-[core]
-    remote = origin
-['remote "myremote"']
-    url = C:\Users\uttam\AppData\Local\Temp
 ['remote "origin"']
     url = https://dagshub.com/mepaluttam/yt-comment-sentiment-analysis.dvc
+    auth = basic
+    user = mepaluttam
+    password = 01aa5c8977b2d233639410d3b32b40c5d902473c
