@@ -39,7 +39,11 @@ jobs:
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
 
       - name: DVC Pull from DagsHub
-        run: dvc pull --force
+        run: dvc pull
 
       - name: Run DVC Pipeline
         run: dvc repro
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+        

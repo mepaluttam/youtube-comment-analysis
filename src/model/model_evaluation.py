@@ -140,10 +140,11 @@ def main():
 
 # Initialize DagsHub MLflow logging
     dagshub.init(
-        repo_owner='mepaluttam',  # optionally use env for dynamic owner
-        repo_name='youtube-comment-analysis',
+        repo_owner=os.getenv("DAGSHUB_USERNAME"),
+        repo_name="youtube-comment-analysis",
         mlflow=True
     )
+
  
     mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow")
     mlflow.set_experiment('dvc-pipeline-runs')
