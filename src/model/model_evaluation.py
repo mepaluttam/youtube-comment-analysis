@@ -140,7 +140,7 @@ def main():
 
 # Initialize DagsHub MLflow logging
     dagshub.init(
-        repo_owner=os.getenv("DAGSHUB_USERNAME"),  # optionally use env for dynamic owner
+        repo_owner='mepaluttam',  # optionally use env for dynamic owner
         repo_name='youtube-comment-analysis',
         mlflow=True
     )
