@@ -137,11 +137,19 @@ def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
 
 def main():
     import dagshub
+    from dagshub.auth import add_app_token
+    import os
+
+# Set token for authentication
+    add_app_token(os.getenv("DAGSHUB_TOKEN"))
+
+# Initialize DagsHub MLflow logging
     dagshub.init(
-        repo_owner='mepaluttam',
+        repo_owner=os.getenv("DAGSHUB_USERNAME"),  # optionally use env for dynamic owner
         repo_name='youtube-comment-analysis',
         mlflow=True
     )
+ 
     mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow")
     mlflow.set_experiment('dvc-pipeline-runs')
     
