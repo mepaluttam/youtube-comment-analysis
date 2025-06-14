@@ -33,6 +33,7 @@ jobs:
           dvc remote modify origin auth basic
           dvc remote modify origin user $DAGSHUB_USERNAME
           dvc remote modify origin password $DAGSHUB_TOKEN
+          dvc remote default origin
         env:
           DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
           DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
