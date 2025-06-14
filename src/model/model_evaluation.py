@@ -11,7 +11,6 @@ import os
 import matplotlib.pyplot as plt
 import seaborn as sns
 import json
-
 # logging configuration
 logger = logging.getLogger('model_evaluation')
 logger.setLevel('DEBUG')
@@ -127,7 +126,11 @@ def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
 
 def main():
     import dagshub
-    dagshub.init(repo_owner='mepaluttam', repo_name='youtube-comment-analysis', mlflow=True)
+    dagshub.init(
+    repo_owner='mepaluttam',
+    repo_name='youtube-comment-analysis',
+    token=os.getenv("DAGSHUB_TOKEN"),  # Required for CI
+    mlflow=True)
     mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow/")
     mlflow.set_experiment('dvc-pipeline-runs')
     
