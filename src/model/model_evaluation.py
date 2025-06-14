@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from dotenv import load_dotenv
 import pickle
 import logging
 import yaml
@@ -8,9 +9,19 @@ import mlflow.sklearn
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 import os
+import matplotlib
+matplotlib.use('Agg') 
+
 import matplotlib.pyplot as plt
+
 import seaborn as sns
 import json
+
+# === Load environment variables from .env ===
+project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir, os.pardir))
+dotenv_path = os.path.join(project_dir, '.env')
+load_dotenv(dotenv_path)
+
 # logging configuration
 logger = logging.getLogger('model_evaluation')
 logger.setLevel('DEBUG')
@@ -127,11 +138,11 @@ def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
 def main():
     import dagshub
     dagshub.init(
-    repo_owner='mepaluttam',
-    repo_name='youtube-comment-analysis',
-    token=os.getenv("DAGSHUB_TOKEN"),  # Required for CI
-    mlflow=True)
-    mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow/")
+        repo_owner='mepaluttam',
+        repo_name='youtube-comment-analysis',
+        mlflow=True
+    )
+    mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow")
     mlflow.set_experiment('dvc-pipeline-runs')
     
     with mlflow.start_run() as run:
