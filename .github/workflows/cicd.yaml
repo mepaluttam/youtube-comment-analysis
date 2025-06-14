@@ -26,12 +26,19 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install dvc
+          pip install dvc[http]  # Important: Use [http] for DagsHub
+
+      - name: Configure DVC Remote for DagsHub
+        run: |
+          dvc remote modify origin auth basic
+          dvc remote modify origin user $DAGSHUB_USERNAME
+          dvc remote modify origin password $DAGSHUB_TOKEN
+        env:
+          DAGSHUB_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
 
       - name: DVC Pull from DagsHub
-        run: |
-          dvc pull --force 
+        run: dvc pull --force
 
       - name: Run DVC Pipeline
-        run: |
-          dvc repro
+        run: dvc repro
