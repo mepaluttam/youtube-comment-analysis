@@ -137,21 +137,23 @@ def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
 
 def main():
     import os
+
+    # Set DagsHub token explicitly (required for MLflow auth)
     os.environ["DAGSHUB_TOKEN"] = os.getenv("DAGSHUB_TOKEN")
-    
-    import dagshub
 
-# Initialize DagsHub MLflow logging
-    dagshub.init(
-        repo_owner=os.getenv("DAGSHUB_USERNAME"),
-        repo_name="youtube-comment-analysis",
-        mlflow=True
-    )
+    # Only initialize dagshub locally, NOT in GitHub Actions CI
+    if os.getenv("GITHUB_ACTIONS") != "true":
+        import dagshub
+        dagshub.init(
+            repo_owner=os.getenv("DAGSHUB_USERNAME"),
+            repo_name="youtube-comment-analysis",
+            mlflow=True
+        )
 
- 
+    # Set MLflow tracking URI for DagsHub (this works in CI too)
     mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow")
     mlflow.set_experiment('dvc-pipeline-runs')
-    
+
     with mlflow.start_run() as run:
         try:
             # Load parameters from YAML file
@@ -161,38 +163,31 @@ def main():
             # Log parameters
             for key, value in params.items():
                 mlflow.log_param(key, value)
-            
+
             # Load model and vectorizer
             model = load_model(os.path.join(root_dir, 'lgbm_model.pkl'))
             vectorizer = load_vectorizer(os.path.join(root_dir, 'tfidf_vectorizer.pkl'))
 
-            # Log model parameters
             if hasattr(model, 'get_params'):
                 for param_name, param_value in model.get_params().items():
                     mlflow.log_param(param_name, param_value)
 
-            # Log model and vectorizer
             mlflow.sklearn.log_model(model, "lgbm_model")
 
             artifact_uri = mlflow.get_artifact_uri()
             model_path = "lgbm_model"
 
-            # Save model info
             save_model_info(run.info.run_id, model_path, 'experiment_info.json')
 
             mlflow.log_artifact(os.path.join(root_dir, 'tfidf_vectorizer.pkl'))
 
-            # Load test data
             test_data = load_data(os.path.join(root_dir, 'data/interim/test_processed.csv'))
 
-            # Prepare test data
             X_test_tfidf = vectorizer.transform(test_data['clean_comment'].values)
             y_test = test_data['category'].values
 
-            # Evaluate model and get metrics
             report, cm = evaluate_model(model, X_test_tfidf, y_test)
 
-            # Log classification report metrics for the test data
             for label, metrics in report.items():
                 if isinstance(metrics, dict):
                     mlflow.log_metrics({
@@ -201,10 +196,8 @@ def main():
                         f"test_{label}_f1-score": metrics['f1-score']
                     })
 
-            # Log confusion matrix
             log_confusion_matrix(cm, "Test Data")
 
-            # Add important tags
             mlflow.set_tag("model_type", "LightGBM")
             mlflow.set_tag("task", "Sentiment Analysis")
             mlflow.set_tag("dataset", "YouTube Comments")
