@@ -1,24 +1,17 @@
-# register model
-
 import json
 import mlflow
 import logging
 import os
 
-# Set up MLflow tracking URI
-import dagshub
-dagshub.init(repo_owner='mepaluttam', repo_name='youtube-comment-analysis', mlflow=True)
-mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow/")
-
-# logging configuration
+# === Logging Configuration ===
 logger = logging.getLogger('model_registration')
-logger.setLevel('DEBUG')
+logger.setLevel(logging.DEBUG)
 
 console_handler = logging.StreamHandler()
-console_handler.setLevel('DEBUG')
+console_handler.setLevel(logging.DEBUG)
 
 file_handler = logging.FileHandler('model_registration_errors.log')
-file_handler.setLevel('ERROR')
+file_handler.setLevel(logging.ERROR)
 
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
@@ -26,6 +19,7 @@ file_handler.setFormatter(formatter)
 
 logger.addHandler(console_handler)
 logger.addHandler(file_handler)
+
 
 def load_model_info(file_path: str) -> dict:
     """Load the model info from a JSON file."""
@@ -41,38 +35,51 @@ def load_model_info(file_path: str) -> dict:
         logger.error('Unexpected error occurred while loading the model info: %s', e)
         raise
 
+
 def register_model(model_name: str, model_info: dict):
     """Register the model to the MLflow Model Registry."""
     try:
         model_uri = f"runs:/{model_info['run_id']}/{model_info['model_path']}"
-        
+        logger.debug(f'Model URI: {model_uri}')
+
         # Register the model
         model_version = mlflow.register_model(model_uri, model_name)
-        
-        # Transition the model to "Staging" stage
+        logger.debug(f'Model {model_name} registered as version {model_version.version}')
+
+        # Transition to Staging
         client = mlflow.tracking.MlflowClient()
         client.transition_model_version_stage(
             name=model_name,
             version=model_version.version,
             stage="Staging"
         )
-        
-        logger.debug(f'Model {model_name} version {model_version.version} registered and transitioned to Staging.')
+
+        logger.info(f'Model {model_name} version {model_version.version} registered and transitioned to Staging.')
+
     except Exception as e:
         logger.error('Error during model registration: %s', e)
         raise
 
+
 def main():
     try:
-        # Set MLflow auth env vars for DagsHub
+        # ✅ Set MLflow authentication before init
         os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("DAGSHUB_USERNAME")
         os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("DAGSHUB_TOKEN")
 
+        # ✅ Import and initialize dagshub after setting env vars
+        import dagshub
+        dagshub.init(repo_owner='mepaluttam', repo_name='youtube-comment-analysis', mlflow=True)
+        mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow/")
+
+        # Load model info from JSON
         model_info_path = 'experiment_info.json'
         model_info = load_model_info(model_info_path)
 
+        # Register and promote model
         model_name = "yt_chrome_plugin_model"
         register_model(model_name, model_info)
+
     except Exception as e:
         logger.error('Failed to complete the model registration process: %s', e)
         print(f"Error: {e}")
