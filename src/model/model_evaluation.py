@@ -136,6 +136,9 @@ def save_model_info(run_id: str, model_path: str, file_path: str) -> None:
 
 
 def main():
+    import os
+    os.environ["DAGSHUB_TOKEN"] = os.getenv("DAGSHUB_TOKEN")
+    
     import dagshub
 
 # Initialize DagsHub MLflow logging
