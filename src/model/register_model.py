@@ -64,14 +64,19 @@ def register_model(model_name: str, model_info: dict):
 
 def main():
     try:
+        # Set MLflow auth env vars for DagsHub
+        os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("DAGSHUB_USERNAME")
+        os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("DAGSHUB_TOKEN")
+
         model_info_path = 'experiment_info.json'
         model_info = load_model_info(model_info_path)
-        
+
         model_name = "yt_chrome_plugin_model"
         register_model(model_name, model_info)
     except Exception as e:
         logger.error('Failed to complete the model registration process: %s', e)
         print(f"Error: {e}")
+
 
 if __name__ == '__main__':
     main()
