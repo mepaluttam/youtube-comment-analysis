@@ -1,35 +1,31 @@
+import os
+from dotenv import load_dotenv
+
+# === Load environment variables from .env file ===
+load_dotenv()
+
+# ✅ Set credentials globally before importing MLflow
+os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME", "")
+os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD", "")
+os.environ["DAGSHUB_TOKEN"] = os.getenv("DAGSHUB_TOKEN", "")
+
 import json
 import mlflow
 import logging
-import os
-from dotenv import load_dotenv
 from dagshub import init
+from mlflow.tracking import MlflowClient
 
-# === Load environment variables ===
-load_dotenv()
-
-# === Required credentials ===
-mlflow_username = os.getenv("MLFLOW_TRACKING_USERNAME")
-mlflow_password = os.getenv("MLFLOW_TRACKING_PASSWORD")
-dagshub_token = os.getenv("DAGSHUB_TOKEN")
-
-if not (mlflow_username and mlflow_password):
-    raise ValueError("❌ MLFLOW_TRACKING_USERNAME and/or MLFLOW_TRACKING_PASSWORD not set in .env")
-
-if not dagshub_token:
-    raise ValueError("❌ DAGSHUB_TOKEN not set in .env")
-
-# === Initialize Dagshub (enables MLflow tracking) ===
+# === Initialize Dagshub integration ===
 init(
-    repo_owner='mepaluttam',
-    repo_name='youtube-comment-analysis',
+    repo_owner="mepaluttam",
+    repo_name="youtube-comment-analysis",
     mlflow=True
 )
 
 # === Set MLflow tracking URI ===
 mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow")
 
-# === Configure Logging ===
+# === Logging Configuration ===
 logger = logging.getLogger('model_registration')
 logger.setLevel(logging.DEBUG)
 
@@ -48,7 +44,7 @@ logger.addHandler(file_handler)
 
 
 def load_model_info(file_path: str) -> dict:
-    """Load model info from a JSON file."""
+    """Load model info (run_id, model_path) from JSON file."""
     try:
         with open(file_path, 'r') as file:
             model_info = json.load(file)
@@ -63,44 +59,43 @@ def load_model_info(file_path: str) -> dict:
 
 
 def register_model(model_name: str, model_info: dict):
-    """Register the model and transition it to Staging."""
+    """Register the model in MLflow Model Registry and promote to 'Staging'."""
     try:
-        # ✅ Explicitly set environment variables (required for model registry access)
-        os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
-        os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
-
         model_uri = f"runs:/{model_info['run_id']}/{model_info['model_path']}"
+        logger.debug(f"🔁 Registering model from URI: {model_uri}")
 
         # Register model
-        model_version = mlflow.register_model(model_uri, model_name)
+        model_version = mlflow.register_model(model_uri=model_uri, name=model_name)
 
-        # Promote to staging
-        client = mlflow.tracking.MlflowClient()
+        # Transition to Staging
+        client = MlflowClient()
         client.transition_model_version_stage(
             name=model_name,
             version=model_version.version,
-            stage="Staging"
+            stage="Staging",
+            archive_existing_versions=True
         )
 
-        logger.info(f"✅ Model '{model_name}' version {model_version.version} registered and moved to 'Staging'.")
-        print(f"✅ Model '{model_name}' version {model_version.version} registered successfully.")
+        logger.debug(f"✅ Model '{model_name}' version {model_version.version} transitioned to 'Staging'")
+        print(f"✅ Model '{model_name}' version {model_version.version} registered and staged successfully.")
     except Exception as e:
         logger.error('❌ Error during model registration: %s', e)
-        print(f"❌ Error: {e}")
+        print(f"❌ Error during registration: {e}")
         raise
 
 
 def main():
     try:
-        model_info_path = 'experiment_info.json'
+        model_info_path = "experiment_info.json"
         model_info = load_model_info(model_info_path)
 
         model_name = "yt_chrome_plugin_model"
         register_model(model_name, model_info)
+
     except Exception as e:
         logger.error('❌ Model registration failed: %s', e)
         print(f"❌ Registration failed: {e}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
