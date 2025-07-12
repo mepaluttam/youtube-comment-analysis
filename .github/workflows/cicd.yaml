@@ -72,3 +72,39 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git push origin ${{ github.ref_name }}
+
+      - name: Install test dependencies
+        run: |
+          pip install pytest
+
+      - name: Test Model Load
+        run: pytest scripts/test_load_model.py
+
+      - name: Test Model Performance
+        run: pytest scripts/test_model_performance.py
+
+      - name: Promote Model
+        if: success()
+        env:
+          DAGSHUB_TOKEN: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_USERNAME: mepaluttam
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
+          MLFLOW_TRACKING_URI: https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow
+        run: python scripts/promote_model.py
+
+      
+      - name: Log in to Docker Hub
+        if: success()
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+
+      - name: Build Docker Image
+        if: success()
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/yt_sentiment_analysis:latest .
+
+      - name: Push Docker Image
+        if: success()
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/yt_sentiment_analysis:latest
+
+
