@@ -3,17 +3,25 @@ import mlflow
 import logging
 import os
 from dotenv import load_dotenv
-from dagshub import init  # ✅ Correct import
+from dagshub import init
 
 # === Load environment variables ===
 load_dotenv()
 
-# === Initialize Dagshub with MLflow integration ===
-dagshub_token = os.getenv("DAGSHUB_TOKEN")
-if not dagshub_token:
-    raise ValueError("❌ DAGSHUB_TOKEN not found in environment variables or .env file")
+# === Manually set MLflow credentials (for DagsHub) ===
+os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME")
+os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD")
 
-init(  # ✅ Use `init` directly
+# === Validate required credentials ===
+dagshub_token = os.getenv("DAGSHUB_TOKEN")
+mlflow_username = os.getenv("MLFLOW_TRACKING_USERNAME")
+mlflow_password = os.getenv("MLFLOW_TRACKING_PASSWORD")
+
+if not (dagshub_token and mlflow_username and mlflow_password):
+    raise ValueError("❌ Required credentials (DAGSHUB_TOKEN or MLFLOW credentials) are missing from environment variables or .env file")
+
+# === Initialize Dagshub with MLflow integration ===
+init(
     repo_owner='mepaluttam',
     repo_name='youtube-comment-analysis',
     mlflow=True
@@ -83,7 +91,7 @@ def main():
         model_info_path = 'experiment_info.json'
         model_info = load_model_info(model_info_path)
 
-        model_name = "yt_chrome_plugin_model"  # ✅ Fixed typo here
+        model_name = "yt_chrome_plugin_model"
         register_model(model_name, model_info)
 
     except Exception as e:
