@@ -1,31 +1,31 @@
 import os
-from dotenv import load_dotenv
-
-# === Load environment variables from .env file ===
-load_dotenv()
-
-# ✅ Set credentials globally before importing MLflow
-os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME", "")
-os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD", "")
-os.environ["DAGSHUB_TOKEN"] = os.getenv("DAGSHUB_TOKEN", "")
-
 import json
 import mlflow
 import logging
 from dagshub import init
 from mlflow.tracking import MlflowClient
 
-# === Initialize Dagshub integration ===
+# === Load .env only when running locally (not in GitHub Actions CI) ===
+if os.getenv("GITHUB_ACTIONS") != "true":
+    from dotenv import load_dotenv
+    load_dotenv()
+
+# === Set required environment variables from either environment or .env ===
+os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME", "")
+os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD", "")
+os.environ["DAGSHUB_TOKEN"] = os.getenv("DAGSHUB_TOKEN", "")
+
+# === Initialize DagsHub (for MLflow + DVC tracking integration) ===
 init(
     repo_owner="mepaluttam",
     repo_name="youtube-comment-analysis",
     mlflow=True
 )
 
-# === Set MLflow tracking URI ===
+# === Set MLflow Tracking URI ===
 mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow")
 
-# === Logging Configuration ===
+# === Logger setup ===
 logger = logging.getLogger('model_registration')
 logger.setLevel(logging.DEBUG)
 
@@ -48,26 +48,24 @@ def load_model_info(file_path: str) -> dict:
     try:
         with open(file_path, 'r') as file:
             model_info = json.load(file)
-        logger.debug('✅ Model info loaded from %s', file_path)
+        logger.debug(f"✅ Model info loaded from {file_path}")
         return model_info
     except FileNotFoundError:
-        logger.error('❌ File not found: %s', file_path)
+        logger.error(f"❌ File not found: {file_path}")
         raise
     except Exception as e:
-        logger.error('❌ Unexpected error loading model info: %s', e)
+        logger.error(f"❌ Unexpected error loading model info: {e}")
         raise
 
 
 def register_model(model_name: str, model_info: dict):
-    """Register the model in MLflow Model Registry and promote to 'Staging'."""
+    """Register the model and transition to 'Staging'."""
     try:
         model_uri = f"runs:/{model_info['run_id']}/{model_info['model_path']}"
         logger.debug(f"🔁 Registering model from URI: {model_uri}")
 
-        # Register model
         model_version = mlflow.register_model(model_uri=model_uri, name=model_name)
 
-        # Transition to Staging
         client = MlflowClient()
         client.transition_model_version_stage(
             name=model_name,
@@ -76,11 +74,11 @@ def register_model(model_name: str, model_info: dict):
             archive_existing_versions=True
         )
 
-        logger.debug(f"✅ Model '{model_name}' version {model_version.version} transitioned to 'Staging'")
-        print(f"✅ Model '{model_name}' version {model_version.version} registered and staged successfully.")
+        logger.info(f"✅ Model '{model_name}' version {model_version.version} registered and staged.")
+        print(f"✅ Model '{model_name}' version {model_version.version} registered and staged.")
     except Exception as e:
-        logger.error('❌ Error during model registration: %s', e)
-        print(f"❌ Error during registration: {e}")
+        logger.error(f"❌ Error during model registration: {e}")
+        print(f"❌ Registration error: {e}")
         raise
 
 
@@ -93,7 +91,7 @@ def main():
         register_model(model_name, model_info)
 
     except Exception as e:
-        logger.error('❌ Model registration failed: %s', e)
+        logger.error(f"❌ Model registration failed: {e}")
         print(f"❌ Registration failed: {e}")
 
 
