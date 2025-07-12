@@ -8,19 +8,18 @@ from dagshub import init
 # === Load environment variables ===
 load_dotenv()
 
-# === Manually set MLflow credentials (for DagsHub) ===
-os.environ["MLFLOW_TRACKING_USERNAME"] = os.getenv("MLFLOW_TRACKING_USERNAME")
-os.environ["MLFLOW_TRACKING_PASSWORD"] = os.getenv("MLFLOW_TRACKING_PASSWORD")
-
-# === Validate required credentials ===
-dagshub_token = os.getenv("DAGSHUB_TOKEN")
+# === Required credentials ===
 mlflow_username = os.getenv("MLFLOW_TRACKING_USERNAME")
 mlflow_password = os.getenv("MLFLOW_TRACKING_PASSWORD")
+dagshub_token = os.getenv("DAGSHUB_TOKEN")
 
-if not (dagshub_token and mlflow_username and mlflow_password):
-    raise ValueError("❌ Required credentials (DAGSHUB_TOKEN or MLFLOW credentials) are missing from environment variables or .env file")
+if not (mlflow_username and mlflow_password):
+    raise ValueError("❌ MLFLOW_TRACKING_USERNAME and/or MLFLOW_TRACKING_PASSWORD not set in .env")
 
-# === Initialize Dagshub with MLflow integration ===
+if not dagshub_token:
+    raise ValueError("❌ DAGSHUB_TOKEN not set in .env")
+
+# === Initialize Dagshub (enables MLflow tracking) ===
 init(
     repo_owner='mepaluttam',
     repo_name='youtube-comment-analysis',
@@ -30,7 +29,7 @@ init(
 # === Set MLflow tracking URI ===
 mlflow.set_tracking_uri("https://dagshub.com/mepaluttam/youtube-comment-analysis.mlflow")
 
-# === Logging configuration ===
+# === Configure Logging ===
 logger = logging.getLogger('model_registration')
 logger.setLevel(logging.DEBUG)
 
@@ -49,7 +48,7 @@ logger.addHandler(file_handler)
 
 
 def load_model_info(file_path: str) -> dict:
-    """Load model info (run_id, model_path) from JSON file."""
+    """Load model info from a JSON file."""
     try:
         with open(file_path, 'r') as file:
             model_info = json.load(file)
@@ -64,14 +63,18 @@ def load_model_info(file_path: str) -> dict:
 
 
 def register_model(model_name: str, model_info: dict):
-    """Register the model to MLflow Model Registry and transition it to Staging."""
+    """Register the model and transition it to Staging."""
     try:
+        # ✅ Explicitly set environment variables (required for model registry access)
+        os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_username
+        os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_password
+
         model_uri = f"runs:/{model_info['run_id']}/{model_info['model_path']}"
 
         # Register model
         model_version = mlflow.register_model(model_uri, model_name)
 
-        # Transition to Staging
+        # Promote to staging
         client = mlflow.tracking.MlflowClient()
         client.transition_model_version_stage(
             name=model_name,
@@ -79,10 +82,11 @@ def register_model(model_name: str, model_info: dict):
             stage="Staging"
         )
 
-        logger.debug(f"✅ Model '{model_name}' version {model_version.version} registered and transitioned to 'Staging'.")
+        logger.info(f"✅ Model '{model_name}' version {model_version.version} registered and moved to 'Staging'.")
         print(f"✅ Model '{model_name}' version {model_version.version} registered successfully.")
     except Exception as e:
         logger.error('❌ Error during model registration: %s', e)
+        print(f"❌ Error: {e}")
         raise
 
 
@@ -93,10 +97,9 @@ def main():
 
         model_name = "yt_chrome_plugin_model"
         register_model(model_name, model_info)
-
     except Exception as e:
         logger.error('❌ Model registration failed: %s', e)
-        print(f"❌ Error: {e}")
+        print(f"❌ Registration failed: {e}")
 
 
 if __name__ == '__main__':
